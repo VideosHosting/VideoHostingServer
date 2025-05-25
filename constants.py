@@ -11,6 +11,9 @@ load_dotenv("secrets.env") # load up our envs
 #constants
 VIDEO = Path("Videos")
 IMAGE = Path("Images")
+VIDEO.mkdir(exist_ok=True)
+IMAGE.mkdir(exist_ok=True)
+
 Upload = NamedTuple('Upload', [('name', str), ('timestamp', float)])
 
 VIDEO_EXT: set[str] = {'.mp4', '.webm', '.mov'} # supported image extensions
@@ -33,8 +36,6 @@ CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS"))
 if not CLIENT or not hasattr(CLIENT, 'get_user'):
     raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
 
-VIDEO.mkdir(exist_ok=True)
-IMAGE.mkdir(exist_ok=True)
 
 '''
     TODO: DevLog 1
