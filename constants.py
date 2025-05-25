@@ -52,5 +52,4 @@ IMAGE.mkdir(exist_ok=True)
         * Also Fix code base. I swear it looks like shit.
         * Save to mega every 12 hours (as It'll be slow if I do it every upload)
         * Should also probably switch to Async for speed boosts
-        * When I wake up, push it onto github!! git push
 '''
