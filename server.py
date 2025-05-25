@@ -88,4 +88,4 @@ def list_files():
     return jsonify(extras.deque_to_list(const.CUR_UPLOADS))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=int(const.getenv("PORT", 10_000)), debug=True)
