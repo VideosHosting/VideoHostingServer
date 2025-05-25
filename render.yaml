@@ -1,0 +1,5 @@
+build:
+  commands:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    - pip install tenacity==9.1.2 --force-reinstall

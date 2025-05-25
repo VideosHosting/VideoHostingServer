@@ -36,9 +36,6 @@ if not CLIENT or not hasattr(CLIENT, 'get_user'):
 VIDEO.mkdir(exist_ok=True)
 IMAGE.mkdir(exist_ok=True)
 
-# if not all([VIDEO.is_dir(), IMAGE.is_dir()]):
-#     raise FileNotFoundError(f"Folder {VIDEO} or {IMAGE} do not exist")
-
 '''
     TODO: DevLog 1
         * change CUR_UPLOAD to a file
