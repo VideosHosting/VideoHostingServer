@@ -1,15 +1,23 @@
 from flask import Flask, request, jsonify, send_file
+from apscheduler.schedulers.background import BackgroundScheduler # type:ignore
 from pathlib import Path
 from werkzeug.datastructures import ImmutableMultiDict, FileStorage
-from collections import deque
 from time import time
-from typing import Any
 
-#our own python files. We'll use names as a namespace.
+import atexit
+
+#our own python files. Not gonna wild card import but use it as a namespace
 import constants as const
 import extras
 
 app = Flask(__name__)
+
+#we'll use this to clean up
+scheduler: BackgroundScheduler = BackgroundScheduler()
+scheduler.add_job(func=extras.clear_cache, trigger='interval', seconds=const.TIME_LIMIT+1) #type: ignore
+scheduler.start() #type:ignore
+
+atexit.register(lambda: scheduler.shutdown()) #type:ignore
 
 #routes
 @app.route("/")
@@ -25,6 +33,7 @@ def upload_files():
             "ERROR": "No videos/images to upload"
         }), 422
 
+    saved_paths: list[Path] = []
     for name, file in files.items():
         filename: str | None = file.filename
 
@@ -51,15 +60,14 @@ def upload_files():
             })
         
         file.save(filename_path)
-        const.CUR_UPLOADES.appendleft((str(filename_path), time()))
+        const.CUR_UPLOADS.appendleft(const.Upload(
+            name=filename,
+            timestamp=time()
+        ))
 
-    # Can change this later to save to mega a day (saving like this can be slow)
-    extras.save_to_mega((
-        Path(file.filename)
-        
-        for file in files.values()
-        if file.filename
-    ))
+        saved_paths.append(filename_path)
+
+    extras.save_to_mega(saved_paths)
 
     return jsonify({
         "SUCCESS": f"Uploaded {len(files)} file(s) Successfully"
@@ -73,31 +81,11 @@ def serve_attachment(file_id: str):
             "ERROR": f"File '{file_id}' does not exist"
         }), 404
     
-    return send_file(path)
-
-def deque_to_list(deq: deque[Any]):
-    lst: list[Any] = []
-
-    while deq:
-        lst.append(deq.pop())
-
-    return lst
+    return send_file(path, as_attachment=False, conditional=True)
 
 @app.route("/list", methods=['GET'])
 def list_files():
-    files: dict[str, list[str]] = {
-        "Images": [],
-        "Videos": [],
-        "CUR_UPLOADS": deque_to_list(const.CUR_UPLOADES),
-        "ALL_UPLOADS": const.ALL_UPLOADES
-    }
+    return jsonify(extras.deque_to_list(const.CUR_UPLOADS))
 
-    for images in const.IMAGE.iterdir():
-        files["Images"].append(images.name)
-
-    for videos in const.VIDEO.iterdir():
-        files["Videos"].append(videos.name)
-    
-    return jsonify(files), 200
-
-app.run(host='0.0.0.0', port=8080, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080, debug=True)

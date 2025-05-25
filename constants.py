@@ -1,14 +1,17 @@
 from pathlib import Path
-from mega import Mega
+from mega import Mega #type: ignore
 from dotenv import load_dotenv
 from os import getenv
+from typing import NamedTuple
 from collections import deque
+from time import time
 
 load_dotenv("secrets.env") # load up our envs
 
 #constants
 VIDEO = Path("Videos")
 IMAGE = Path("Images")
+Upload = NamedTuple('Upload', [('name', str), ('timestamp', float)])
 
 VIDEO_EXT: set[str] = {'.mp4', '.webm', '.mov'} # supported image extensions
 IMAGE_EXT: set[str] = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'}
@@ -16,19 +19,19 @@ IMAGE_EXT: set[str] = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'}
 # 24 hours (in seconds)
 TIME_LIMIT = 86_400
 
-ALL_UPLOADES: list[str] = [
-    #"Images/image.png"
-    #"Videos/video.mp4
-    # "
-    str(p)
-    for p in VIDEO.iterdir()
-] + [ str(p) for p in IMAGE.iterdir() ]
- # every single file (optimize later, could be a waste of space tbf)
-CUR_UPLOADES: deque[tuple[str, float]] = deque(
-    #("Images/image.png", time)
-) # files that are currently in the cache
+#not dealing with circular imports
+def _get_current_uploads() -> deque[Upload]:
+    return  deque([
+        Upload(name=str(path), timestamp=time())
+        for folder in (VIDEO, IMAGE)
+        for path in folder.iterdir()
+    ])
+
+CUR_UPLOADS: deque[Upload] = _get_current_uploads()
 
 CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS"))
+if not CLIENT or not hasattr(CLIENT, 'get_user'):
+    raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
 
 VIDEO.mkdir(exist_ok=True)
 IMAGE.mkdir(exist_ok=True)
@@ -37,7 +40,7 @@ IMAGE.mkdir(exist_ok=True)
 #     raise FileNotFoundError(f"Folder {VIDEO} or {IMAGE} do not exist")
 
 '''
-    TODO:
+    TODO: DevLog 1
         * change CUR_UPLOAD to a file
         * Its only accessed once a day so its fine.
 
