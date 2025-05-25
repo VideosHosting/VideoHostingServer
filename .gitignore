@@ -1,0 +1,7 @@
+__pycache__
+.env
+.vscode
+Images
+Videos
+secrets.env
+client.py
