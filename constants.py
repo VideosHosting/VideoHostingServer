@@ -62,3 +62,9 @@ UPLOAD_QUEUE_LOCK = Lock()
 CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS")) #type:ignore
 if not CLIENT or not hasattr(CLIENT, 'get_user'):
     raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
+
+'''
+    * TODO:
+        * Add removing images/videos
+        * Add authentication (So no one but ME uses it)
+'''
