@@ -31,7 +31,7 @@ const.SPACE_TAKEN = extras.get_uploads_size()
 #we'll use this to clean up
 scheduler: BackgroundScheduler = BackgroundScheduler()
 scheduler.add_job(func=extras.clear_cache, trigger='interval', seconds=const.CACHE_TIME_LIMIT+1) #type: ignore
-scheduler.add_job(func=extras.upload_periodically, trigger='interval', seconds=const.CACHE_TIME_LIMIT+1)#type:ignore
+scheduler.add_job(func=extras.upload_periodically, trigger='interval', seconds=const.UPLOAD_TIME_LIMIT+1)#type:ignore
 scheduler.start() #type:ignore
 
 atexit.register(lambda: scheduler.shutdown()) #type:ignore
