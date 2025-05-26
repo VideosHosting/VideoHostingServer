@@ -1,8 +1,6 @@
-__pycache__
 .env
 .vscode
-Images
-Videos
+Assets
 secrets.env
 client.py
 test.drawio

@@ -4,13 +4,12 @@ from pathlib import Path
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from time import time
-from threading import Thread
 
 import atexit
 
 #our own python files. Not gonna wild card import but use it as a namespace
-import constants as const
-import extras
+import modules.constants as const
+import modules.extras as extras
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
@@ -29,7 +28,7 @@ limiter = Limiter(
 const.SPACE_TAKEN = extras.get_uploads_size()
 
 #we'll use this to clean up
-scheduler: BackgroundScheduler = BackgroundScheduler()
+scheduler: BackgroundScheduler = BackgroundScheduler(executors={"default": const.SCHEDULER_EXECUTOR  })
 scheduler.add_job(func=extras.clear_cache, trigger='interval', seconds=const.CACHE_TIME_LIMIT+1) #type: ignore
 scheduler.add_job(func=extras.upload_periodically, trigger='interval', seconds=const.UPLOAD_TIME_LIMIT+1)#type:ignore
 scheduler.start() #type:ignore
@@ -76,21 +75,31 @@ def upload_files():
         # lock space on 800 MB (better to keep 200MB for extra space)
         with const.SPACE_TAKEN_LOCK:
             if const.SPACE_TAKEN >= 800:
-                Thread(target=extras.upload_periodically, daemon=True).start()
-                Thread(target=extras.clear_cache, args=(True,), daemon=True).start()
+                const.logger.error("Space limit reached!")
+
+                const.EXECUTOR.submit(
+                    extras.upload_periodically
+                )
+                const.EXECUTOR.submit(
+                    extras.clear_cache, True
+                )
+                # Thread(target=extras.upload_periodically, daemon=True).start()
+                # Thread(target=extras.clear_cache, args=(True,), daemon=True).start()
         
         try:
             file.save(filename_path)
         except Exception as e:
+            #lingering data left behind
+            if filename_path.is_file():
+                filename_path.unlink()
+
             const.logger.error(f"Failed to save {filename} due to: {e}")
-            filename_path.unlink(missing_ok=True)
             return jsonify({"ERROR": f"Failed to save file '{filename}'"}), 500
         
-        with const.CUR_UPLOADS_LOCK:
-            const.CUR_UPLOADS.appendleft(const.Upload(
-                name=filename_path.as_posix(),
-                timestamp=time()
-            ))
+        const.CUR_UPLOADS.set(const.Upload(
+            name=filename_path.as_posix(),
+            timestamp=time()
+        ))
 
         const.logger.info(f"Successfully uploaded {filename_path}")
         with const.SPACE_TAKEN_LOCK:
@@ -99,9 +108,14 @@ def upload_files():
 
         saved_paths.append(filename_path)
 
-    with const.UPLOAD_QUEUE_LOCK:
-        for file in saved_paths:
-            const.UPLOAD_QUEUE.append(file)
+    for file in saved_paths:
+        const.UPLOAD_QUEUE.set(const.Upload(
+            name=str(file),
+            timestamp=0.0
+        ))
+    
+    const.CUR_UPLOADS.commit()  # Save the current uploads to disk
+    const.UPLOAD_QUEUE.commit()  # Save the upload queue to disk
 
     return jsonify({
         "SUCCESS": f"Uploaded {len(saved_paths)} file(s) Successfully",
@@ -125,16 +139,15 @@ def list_files():
     with const.SPACE_TAKEN_LOCK:
         return jsonify({
             "SPACE": f'{const.SPACE_TAKEN:_.2f}MBs',
-            "FILES": extras.deque_to_list(const.CUR_UPLOADS)
+            "FILES": const.CUR_UPLOADS[:]
         })
 
 @app.route("/upload_queue", methods=['GET'])
 def upload_queue():
-    with const.UPLOAD_QUEUE_LOCK:
-        return jsonify([
-            path.name
-            for path in const.UPLOAD_QUEUE
-        ])
+    return jsonify([
+        path.name
+        for path in const.UPLOAD_QUEUE
+    ])
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10_000, debug=False)
+    app.run(host='0.0.0.0', port=10_000, debug=True)

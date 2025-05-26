@@ -2,10 +2,11 @@ from pathlib import Path
 from time import time
 from collections import deque
 from typing import Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
+
 from uuid import uuid4 # for random files
 
-import constants as const
+import modules.constants as const
 
 #helper functions
 def deque_to_list(deq: deque[const.Upload]):
@@ -41,15 +42,14 @@ def save_to_mega(files: Path | list[Path]) -> list[tuple[str, bool, Optional[str
         files = [files]
 
     results: list[tuple[str, bool, Optional[str]]] = []
-    with ThreadPoolExecutor() as executor:
-        future_to_path = {
-            executor.submit(upload, path.as_posix()):
-            path
-            for path in files
-        }
+    future_to_path = {
+        const.EXECUTOR.submit(upload, path.as_posix()):
+        path
+        for path in files
+    }
 
-        for future in as_completed(future_to_path):
-            results.append(future.result())
+    for future in as_completed(future_to_path):
+        results.append(future.result())
     
     return results
 
@@ -63,41 +63,46 @@ def generate_unique_name(dir: Path, suffix: str = "") -> Path:
 def get_uploads_size():
     total_size = 0
 
-    for video in const.VIDEO.iterdir():  # Recursively iterate over all files
-        total_size += video.stat().st_size  # size in bytes
-    for image in const.IMAGE.iterdir():
-        total_size += image.stat().st_size
+    for folder in [const.VIDEO, const.IMAGE]:
+
+        for entry in folder.iterdir():
+            try:
+                total_size += entry.stat().st_size
+            except OSError:
+                pass
 
     return total_size / (1024 * 1024)  # convert bytes to MB
 
 #clear cache (if right_now, entire cache is cleared on demand)
 def clear_cache(right_now: bool=False):
+    cur_time = time()
 
-    with const.CUR_UPLOADS_LOCK:
-        cur_time: float = time()
-
-        while const.CUR_UPLOADS:
-            time_passed = cur_time - const.CUR_UPLOADS[-1].timestamp
-
-            if time_passed < const.CACHE_TIME_LIMIT and not right_now:
-                break
-
-            expired = const.CUR_UPLOADS.pop()
-            print(f"Cleared cache for {expired.name}")
-
-            Path(expired.name).unlink(missing_ok=True)
+    # json = const.CUR_UPLOADS.get_json()
+    if not right_now:
+        const.CUR_UPLOADS[:] = [
+            upload for upload in const.CUR_UPLOADS
+            if (cur_time - upload.timestamp) < const.CACHE_TIME_LIMIT
+        ]
+    else:
+        const.CUR_UPLOADS.clear()
 
     with const.SPACE_TAKEN_LOCK:
         const.SPACE_TAKEN = get_uploads_size()
 
+def upload_to_path(uploads: list[const.Upload]) -> list[Path]:
+    return [
+        Path(upload.name)
+        for upload in uploads
+    ]
+
 #upload things in the upload queue
 def upload_periodically():
-    with const.UPLOAD_QUEUE_LOCK:
-        upload_batch = const.UPLOAD_QUEUE.copy()
+    with const.UPLOAD_QUEUE.lock:
+        upload_batch: list[const.Upload] = const.UPLOAD_QUEUE.copy()
         const.UPLOAD_QUEUE.clear()
 
     const.logger.info(f"Saving {len(upload_batch)} files to mega!")
-    results = save_to_mega(upload_batch)
+    results = save_to_mega(upload_to_path(upload_batch))
 
     for path, success, info in results:
         if success:
