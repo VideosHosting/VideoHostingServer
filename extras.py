@@ -82,6 +82,7 @@ def clear_cache(right_now: bool=False):
             if time_passed < const.CACHE_TIME_LIMIT and not right_now:
                 break
 
+
             expired = const.CUR_UPLOADS.pop()
             print(f"Cleared cache for {expired.name}")
 
