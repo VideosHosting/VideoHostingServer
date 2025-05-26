@@ -5,19 +5,26 @@ from os import getenv
 from typing import NamedTuple
 from collections import deque
 from time import time
+from threading import Lock
 import logging
 
 load_dotenv("secrets.env") # load up our envs
 
 #logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler("server.log"),
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger("server_logger")
+logger.setLevel(logging.INFO)
+
+if not logger.handlers:
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+
+    file_handler = logging.FileHandler("server.log")
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
 
 #constants
 VIDEO = Path("Videos")
@@ -31,7 +38,12 @@ VIDEO_EXT: set[str] = {'.mp4', '.webm', '.mov'} # supported image extensions
 IMAGE_EXT: set[str] = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif'}
 
 # 24 hours (in seconds)
-TIME_LIMIT = 86_400
+CACHE_TIME_LIMIT = 86_400
+UPLOAD_TIME_LIMIT = 43_200 # half a day
+
+# current space taken in MB
+SPACE_TAKEN = 0
+SPACE_TAKEN_LOCK = Lock() # probably not needed but I'm willing to avoid a headache
 
 #not dealing with circular imports
 def _get_current_uploads() -> deque[Upload]:
@@ -42,23 +54,11 @@ def _get_current_uploads() -> deque[Upload]:
     ])
 
 CUR_UPLOADS: deque[Upload] = _get_current_uploads()
+UPLOAD_QUEUE: list[Path] = list()
+
+CUR_UPLOADS_LOCK = Lock()
+UPLOAD_QUEUE_LOCK = Lock()
 
 CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS")) #type:ignore
 if not CLIENT or not hasattr(CLIENT, 'get_user'):
     raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
-
-
-'''
-    TODO: DevLog 1
-        * change CUR_UPLOAD to a file
-        * Its only accessed once a day so its fine.
-
-        * implemenet fetch_from_mega and save_to_mega
-        * remove ALL_UPLOADS
-            * Its pointless. May change later on
-            * Could use it to bring back files for a day. just NRN
-
-        * Also Fix code base. I swear it looks like shit.
-        * Save to mega every 12 hours (as It'll be slow if I do it every upload)
-        * Should also probably switch to Async for speed boosts
-'''
