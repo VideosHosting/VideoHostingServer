@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, send_file
 from apscheduler.schedulers.background import BackgroundScheduler # type:ignore
 from pathlib import Path
 from werkzeug.datastructures import ImmutableMultiDict, FileStorage
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from time import time
 
 import atexit
@@ -11,6 +13,14 @@ import constants as const
 import extras
 
 app = Flask(__name__)
+
+#limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["10 per minute"],
+    storage_uri="memory://"
+)
 
 #we'll use this to clean up
 scheduler: BackgroundScheduler = BackgroundScheduler()
