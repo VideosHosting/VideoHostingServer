@@ -60,7 +60,7 @@ CUR_UPLOADS_LOCK = Lock()
 UPLOAD_QUEUE_LOCK = Lock()
 
 
-logger.info(f"Logging in mega with {getenv("EMAIL") = } and {getenv("PASS") = }")
+logger.info(f"Logging in mega with {getenv('EMAIL') = } and {getenv('PASS') = }")
 CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS")) #type:ignore
 if not CLIENT or not hasattr(CLIENT, 'get_user'):
     raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
