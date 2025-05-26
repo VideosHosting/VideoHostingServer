@@ -6,3 +6,4 @@ Videos
 secrets.env
 client.py
 test.drawio
+server.log
