@@ -5,8 +5,19 @@ from os import getenv
 from typing import NamedTuple
 from collections import deque
 from time import time
+import logging
 
 load_dotenv("secrets.env") # load up our envs
+
+#logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("server.log"),
+        logging.StreamHandler()
+    ]
+)
 
 #constants
 VIDEO = Path("Videos")
@@ -32,7 +43,7 @@ def _get_current_uploads() -> deque[Upload]:
 
 CUR_UPLOADS: deque[Upload] = _get_current_uploads()
 
-CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS"))
+CLIENT = Mega().login(getenv("EMAIL"), getenv("PASS")) #type:ignore
 if not CLIENT or not hasattr(CLIENT, 'get_user'):
     raise Exception("❌ Mega login failed — check your EMAIL or PASS in environment variables.")
 

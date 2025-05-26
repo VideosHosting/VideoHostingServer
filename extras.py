@@ -24,7 +24,7 @@ def choose_correct_path(*args: Path) -> Optional[Path]:
 
 def upload(path: str, i: int) -> tuple[str, bool, str]:
     try:
-        file = const.CLIENT.upload(path)
+        file = const.CLIENT.upload(path) #type:ignore
         if not file:
             raise Exception("Failed to upload")
         
