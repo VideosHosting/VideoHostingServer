@@ -27,7 +27,7 @@ limiter = Limiter(
 #Update it before starting
 const.SPACE_TAKEN = extras.get_uploads_size()
 
-#we'll use this to clean up
+#we'll use this to clean
 scheduler: BackgroundScheduler = BackgroundScheduler(executors={"default": const.SCHEDULER_EXECUTOR  })
 scheduler.add_job(func=extras.clear_cache, trigger='interval', seconds=const.CACHE_TIME_LIMIT+1) #type: ignore
 scheduler.add_job(func=extras.upload_periodically, trigger='interval', seconds=const.UPLOAD_TIME_LIMIT+1)#type:ignore
