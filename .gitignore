@@ -1,6 +1,7 @@
 .env
 .vscode
 Assets
+frontend
 secrets.env
 client.py
 test.drawio

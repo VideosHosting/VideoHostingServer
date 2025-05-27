@@ -132,7 +132,7 @@ def serve_attachment(file_id: str):
             "ERROR": f"File '{file_id}' does not exist"
         }), 404
     
-    return send_file(path, as_attachment=False, conditional=True)
+    return send_file(path, as_attachment=True, conditional=True)
 
 @app.route("/list", methods=['GET'])
 def list_files():
